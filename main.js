@@ -119,7 +119,7 @@ client.on('interactionCreate', async interaction => {
 		.addComponents(
 			new MessageButton()
 				.setCustomId('ping_btn')
-				.setStyle('PRIMARY')
+				.setStyle('SECONDARY')
 				.setEmoji(paddle_emoji),
 		);
 		// set the bot's paddle emoji
@@ -150,7 +150,7 @@ client.on('interactionCreate', async interaction => {
 				if (index == 50 && !pinged) {
 					row.components[0].setDisabled(true);
 					message.edit({ components: [row] });
-					await interaction.channel.send(`Game over! You bounced the ball ${score} times`);
+					await interaction.channel.send(`Game over! You bounced the ball ${score} ${(score == 1) ? 'time' : 'times'}`);
 					clearInterval(game_loop);
 				// if the user responded in time continue the game
 				} else {
