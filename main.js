@@ -40,7 +40,7 @@ client.once('ready', () =>{
 });
 
 client.on('interactionCreate', async interaction => {
-	if (!interaction.isCommand()) return;
+	if (!interaction.isCommand() && !interaction.isButton()) return;
 
 	if (interaction.commandName === 'ping') {
 		// send the latency and the API latency
@@ -78,32 +78,55 @@ client.on('interactionCreate', async interaction => {
 				);
 
 			interaction.reply({ content: 'Easy (slow) or Hard (fast)?!', components: [row] });
-
-			const filter = click => click.customId === 'easy_btn' || click.customId === 'hard_btn';
-			const collector = interaction.channel.createMessageComponentCollector({ filter, time: 15000 });
-			
-			let easy = true;
-			collector.on('collect', async response => {
-				if (response.customId === 'easy_btn') {
-					await response.update({ content: ':relaxed: Easy mode selected! :relaxed:', components: [] });
-				} else if (response.customId === 'hard_btn') {
-					await response.update({ content: ':open_mouth: Hard mode selected! :open_mouth:', components: [] });
-					easy = false;
-				}
-			})
-
-			const speed = (easy) ? 1 : 2;
-			await interaction.channel.send('Ready...');
-			await wait(2000);
-			await interaction.channel.send('Set...');
-			await wait(1500);
-			await interaction.channel.send('Go!');
-			await wait(500);
 		} else
 		{
 			await interaction.reply("You haven't select a paddle yet! Use `/select` to choose your color");
 		}
 	}
+
+	if (interaction.isButton() && (interaction.customId === 'easy_btn' || interaction.customId === "hard_btn")) {
+		let change = 1.0;
+		if (interaction.customId === 'easy_btn') {
+			change = 0.9;
+			await interaction.update({ content: ':relaxed: Easy mode selected! :relaxed:', components: [] });
+		} else if (interaction.customId === 'hard_btn') {
+			change = 0.7;
+			await interaction.update({ content: ':open_mouth: Hard mode selected! :open_mouth:', components: [] });
+		}
+		await wait(1000);
+		await interaction.channel.send('Ready...');
+		await wait(2000);
+		await interaction.channel.send('Set...');
+		await wait(1500);
+		await interaction.channel.send('Go!');
+		await wait(500);
+
+		let field = '⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀';
+		await interaction.channel.send(`|${field}|`).then(async (message) => {
+			let increment = 10;
+			let index = 0;
+			setInterval(async () => {
+				if (index == 50) {
+					increment *= -1;
+				} else if (index == 0 && increment < 0) {
+					increment *= -1;
+				}
+				field = field.replace('•', '⠀');
+				field = replaceAtIndex(field, index, '•');
+				message.edit(`|${field}|`);
+				index += increment;
+			}, 1500);
+		});
+
+	}
 });
+
+function replaceAtIndex(_string,_index,_newValue) {
+    split_string = _string.substring(0, _index) + ' ' + _string.substring(_index + 1);
+    return_string = split_string.split('');
+    return_string[_index] = _newValue;
+    return_string = return_string.join('');
+    return return_string;
+}
 
 client.login(process.env.TOKEN);
