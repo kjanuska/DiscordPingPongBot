@@ -1,19 +1,22 @@
+// required Discord libraries
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 const { Client, Intents, MessageActionRow, MessageButton } = require('discord.js');
 const client = new Client({ intents: [Intents.FLAGS.GUILDS]} );
 const fs = require('fs');
+// used for the .env file
 require('dotenv').config();
+// custom function to create timeouts
 const wait = require('util').promisify(setTimeout);
 
-// copied from the docs
+// copied from the Discord.js docs
 // used to initialize all the custom commands for the guild
 
-// get all command.js files
+// get all {command}.js files
 const commands = [];
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
-// convert command data to required json format
+// convert command data to required JSON format and add to command array
 for (const file of commandFiles) {
 	const command = require(`./commands/${file}`);
 	commands.push(command.data.toJSON());
@@ -22,7 +25,7 @@ for (const file of commandFiles) {
 client.once('ready', () =>{
 	const rest = new REST({ version: '9' }).setToken(process.env.TOKEN);
 	const CLIENT_ID = client.user.id;
-	// initialize commands
+	// initialize commands with the API
 	(async () => {
 		try {
 			console.log('Started refreshing application (/) commands.');
@@ -42,6 +45,7 @@ client.once('ready', () =>{
 let paddle_emoji;
 let pinged = false;
 client.on('interactionCreate', async interaction => {
+	// don't care about other types of interactions besides slash commands and buttons
 	if (!interaction.isCommand() && !interaction.isButton()) return;
 
 	if (interaction.commandName === 'ping') {
@@ -64,10 +68,12 @@ client.on('interactionCreate', async interaction => {
 	}
 
 	if (interaction.commandName === 'play') {
+		// check to make sure that the user has a valid role
 		if (interaction.member.roles.cache.some(role => role.name === 'red') ||
 			interaction.member.roles.cache.some(role => role.name === 'green') ||
 			interaction.member.roles.cache.some(role => role.name === 'blue'))
 		{
+			// create difficulty buttons
 			const row = new MessageActionRow()
 				.addComponents(
 					new MessageButton()
@@ -83,18 +89,23 @@ client.on('interactionCreate', async interaction => {
 			interaction.reply({ content: 'Easy or Hard?!', components: [row] });
 		} else
 		{
+			// the user needs to select a valid role before playing the game
 			await interaction.reply("You haven't select a paddle yet! Use `/select` to choose your color");
 		}
 	}
 
+	// limit interactions to difficulty selectors
 	if (interaction.isButton() && (interaction.customId === 'easy_btn' || interaction.customId === "hard_btn")) {
+		// the speed at which the ball travels across the field
 		let increment = 10;
 		if (interaction.customId === 'easy_btn') {
 			await interaction.update({ content: ':relaxed: Easy mode selected! :relaxed:', components: [] });
 		} else if (interaction.customId === 'hard_btn') {
+			// faster ball travel
 			increment = 25;
 			await interaction.update({ content: ':open_mouth: Hard mode selected! :open_mouth:', components: [] });
 		}
+		// countdown timer
 		await wait(500);
 		await interaction.channel.send('Ready...');
 		await wait(1500);
@@ -103,6 +114,7 @@ client.on('interactionCreate', async interaction => {
 		await interaction.channel.send('Go!');
 		await wait(500);
 
+		// create a button the user will use to play the game
 		const row = new MessageActionRow()
 		.addComponents(
 			new MessageButton()
@@ -110,27 +122,37 @@ client.on('interactionCreate', async interaction => {
 				.setStyle('PRIMARY')
 				.setEmoji(paddle_emoji),
 		);
+		// set the bot's paddle emoji
 		const bot_emoji = client.emojis.cache.find(emoji => emoji.name === `ping_pong_yellow`);
+		// hardcoded field string
 		let field = '•⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀';
 		await interaction.channel.send({ content: `${bot_emoji} \`${field}\` ${paddle_emoji}`, components: [row] }).then(async (message) => {
 			let index = 0;
 			let score = 0;
+			// every 1.5 seconds update the ball and check game logic
+			// 1.5 seconds is chosen to provide enough time for the user's commands to travel to Discord's servers
 			let game_loop = setInterval(async () => {
 				if (index == 50) {
+					// if the ball is at the end of the field wait 250 ms for the user's response
 					await wait(250);
 					if (pinged) {
+						// make the ball go in the opposite direction and increase the bounce score
 						index = 50;
 						++score;
 						increment *= -1;
 					}
+				// if the ball is at the bot's side of the field make it bounce back
 				} else if (index == 0 && increment < 0) {
 					increment *= -1;
 				}
+				// if the ball is at the user's side of the field and the user has not bounced the ball
+				// stop the loop, disable game button, and send the score
 				if (index == 50 && !pinged) {
 					row.components[0].setDisabled(true);
 					message.edit({ components: [row] });
 					await interaction.channel.send(`Game over! You bounced the ball ${score} times`);
 					clearInterval(game_loop);
+				// if the user responded in time continue the game
 				} else {
 					pinged = false;
 					index += increment;
@@ -142,12 +164,16 @@ client.on('interactionCreate', async interaction => {
 		});
 	}
 
+	// player bounce button handler
 	if (interaction.isButton() && interaction.customId === "ping_btn") {
+		// this line is required because Discord expects a reply everytime a button is clicked
+		// adding this avoid the "This interaction failed" message everytime the button is pressed
 		interaction.deferUpdate();
 		pinged = true;
 	}
 });
 
+// helper function to update the field at a particular string index
 function replaceAtIndex(_string,_index,_newValue) {
     split_string = _string.substring(0, _index) + ' ' + _string.substring(_index + 1);
     return_string = split_string.split('');
@@ -156,4 +182,5 @@ function replaceAtIndex(_string,_index,_newValue) {
     return return_string;
 }
 
+// run the bot
 client.login(process.env.TOKEN);
