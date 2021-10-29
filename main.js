@@ -39,6 +39,8 @@ client.once('ready', () =>{
 	})();
 });
 
+let paddle_emoji;
+let pinged = false;
 client.on('interactionCreate', async interaction => {
 	if (!interaction.isCommand() && !interaction.isButton()) return;
 
@@ -51,7 +53,7 @@ client.on('interactionCreate', async interaction => {
 	if (interaction.commandName === 'select') {
 		const paddle_color = interaction.options.getString('type');
 		// find the correct paddle emoji based on the user's selection
-		const paddle_emoji = client.emojis.cache.find(emoji => emoji.name === `ping_pong_${paddle_color}`);
+		paddle_emoji = client.emojis.cache.find(emoji => emoji.name === `ping_pong_${paddle_color}`);
 		// let the user know what paddle they chose
 		await interaction.reply({ content: `You chose a ${paddle_color} paddle ${paddle_emoji}`, ephemeral: true });
 		// find the correct role based on user's selection
@@ -77,7 +79,7 @@ client.on('interactionCreate', async interaction => {
 						.setStyle('DANGER'),
 				);
 
-			interaction.reply({ content: 'Easy (slow) or Hard (fast)?!', components: [row] });
+			interaction.reply({ content: 'Easy or Hard?!', components: [row] });
 		} else
 		{
 			await interaction.reply("You haven't select a paddle yet! Use `/select` to choose your color");
@@ -94,27 +96,50 @@ client.on('interactionCreate', async interaction => {
 		}
 		await wait(1000);
 		await interaction.channel.send('Ready...');
-		await wait(2000);
-		await interaction.channel.send('Set...');
 		await wait(1500);
+		await interaction.channel.send('Set...');
+		await wait(1000);
 		await interaction.channel.send('Go!');
 		await wait(500);
 
+		const row = new MessageActionRow()
+		.addComponents(
+			new MessageButton()
+				.setCustomId('ping_btn')
+				.setLabel('Ping')
+				.setStyle('PRIMARY'),
+		);
+		const bot_emoji = client.emojis.cache.find(emoji => emoji.name === `ping_pong_yellow`);
 		let field = '⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀';
-		await interaction.channel.send(`|${field}|`).then(async (message) => {
+		await interaction.channel.send({ content: `${bot_emoji}${field}${paddle_emoji}`, components: [row] }).then(async (message) => {
 			let index = 0;
-			setInterval(async () => {
-				if (index == 50) {
+			let game_loop = setInterval(async () => {
+				if (index > 50 && pinged) {
+					pinged = false;
+					index = 50;
 					increment *= -1;
 				} else if (index == 0 && increment < 0) {
 					increment *= -1;
 				}
-				field = field.replace('•', '⠀');
-				field = replaceAtIndex(field, index, '•');
-				message.edit(`|${field}|`);
-				index += increment;
+				pinged = false;
+				if (index > 50) {
+					row.components[0].setDisabled(true);
+					message.edit({ components: [row] });
+					await interaction.channel.send('You lost!');
+					clearInterval(game_loop);
+				} else {
+					field = field.replace('•', '⠀');
+					field = replaceAtIndex(field, index, '•');
+					message.edit(`${bot_emoji}${field}${paddle_emoji}`);
+					index += increment;
+				}
 			}, 1500);
 		});
+	}
+
+	if (interaction.isButton() && interaction.customId === "ping_btn") {
+		interaction.deferUpdate();
+		pinged = true;
 	}
 });
 
