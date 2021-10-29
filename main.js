@@ -85,12 +85,11 @@ client.on('interactionCreate', async interaction => {
 	}
 
 	if (interaction.isButton() && (interaction.customId === 'easy_btn' || interaction.customId === "hard_btn")) {
-		let change = 1.0;
+		let increment = 10;
 		if (interaction.customId === 'easy_btn') {
-			change = 0.9;
 			await interaction.update({ content: ':relaxed: Easy mode selected! :relaxed:', components: [] });
 		} else if (interaction.customId === 'hard_btn') {
-			change = 0.7;
+			increment = 25;
 			await interaction.update({ content: ':open_mouth: Hard mode selected! :open_mouth:', components: [] });
 		}
 		await wait(1000);
@@ -103,7 +102,6 @@ client.on('interactionCreate', async interaction => {
 
 		let field = '⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀';
 		await interaction.channel.send(`|${field}|`).then(async (message) => {
-			let increment = 10;
 			let index = 0;
 			setInterval(async () => {
 				if (index == 50) {
@@ -117,7 +115,6 @@ client.on('interactionCreate', async interaction => {
 				index += increment;
 			}, 1500);
 		});
-
 	}
 });
 
