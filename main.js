@@ -47,7 +47,7 @@ client.on('interactionCreate', async interaction => {
 	if (interaction.commandName === 'ping') {
 		await interaction.reply('Pong!');
 		await wait(1500);
-		await interaction.reply('Do you want to play a game? Type `/select` to select your paddle and `/play` to get started');
+		await interaction.channel.send('Do you want to play a game? Type `/select` to select your paddle and `/play` to get started');
 	}
 
 	// a command that changes your roles based on slash command choices
@@ -111,30 +111,32 @@ client.on('interactionCreate', async interaction => {
 				.setEmoji(paddle_emoji),
 		);
 		const bot_emoji = client.emojis.cache.find(emoji => emoji.name === `ping_pong_yellow`);
-		let field = '⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀';
-		await interaction.channel.send({ content: `${bot_emoji}${field}${paddle_emoji}`, components: [row] }).then(async (message) => {
+		let field = '•⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀';
+		await interaction.channel.send({ content: `${bot_emoji} \`${field}\` ${paddle_emoji}`, components: [row] }).then(async (message) => {
 			let index = 0;
 			let score = 0;
 			let game_loop = setInterval(async () => {
-				if (index > 50 && pinged) {
-					pinged = false;
-					index = 50;
-					++score;
-					increment *= -1;
+				if (index == 50) {
+					await wait(250);
+					if (pinged) {
+						index = 50;
+						++score;
+						increment *= -1;
+					}
 				} else if (index == 0 && increment < 0) {
 					increment *= -1;
 				}
-				pinged = false;
-				if (index > 50) {
+				if (index == 50 && !pinged) {
 					row.components[0].setDisabled(true);
 					message.edit({ components: [row] });
 					await interaction.channel.send(`Game over! You bounced the ball ${score} times`);
 					clearInterval(game_loop);
 				} else {
+					pinged = false;
+					index += increment;
 					field = field.replace('•', '⠀');
 					field = replaceAtIndex(field, index, '•');
-					message.edit(`${bot_emoji}${field}${paddle_emoji}`);
-					index += increment;
+					message.edit(`${bot_emoji}\` ${field}\` ${paddle_emoji}`);
 				}
 			}, 1500);
 		});
